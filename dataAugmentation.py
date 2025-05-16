@@ -1,78 +1,82 @@
 import os
-import random
 from PIL import Image
+import random
+
+# Llista d'arxius dins del directori "Wheres Waldo Images/Raw"
+batches = os.listdir("Wheres Waldo Images/Raw")
 
 def generating_waldos(use_background=True):
+    """Funció per generar i guardar imatges no-existents de Waldo i No-Waldo per l'entrenament.
+    :param use_background: Si és True, s'utilitza un fons real. Si es False, un fons negre.
+    :return: None.
     """
-    Funció per generar imatges de Waldo i sense Waldo a partir de les capçaleres i fons proporcionats.
-    :use_background: Si és True, utilitza fons aleatoris; si és False, utilitza un fons negre.
-    """
-    # Inicilitzar contador de imatges generades
-    im_num = 0
+    background_use_num = 2 # Número de cops que es farà servir cada fons
+    head_use_num = 2 # Número de cops que es farà servir cada cap
+    size = 64 # Les imatges resultants seran de 64x64 píxels. La mida del cap de Wally sol estar en un quadre de 60x60
+    im_num = 0 # Contador d'imatges generades
 
-    # Rutes de les carpetes d'imatges
-    head_path = "Waldo's Head"
-    background_path = "Where's Waldo Images/Cleared"
-    no_waldo_path = "Where's Waldo Images/NoWaldo"
-    waldo_path = "Where's Waldo Images/Waldo"
+    # Itera per cada imatge de cap de Waldo
+    for head_batch in os.listdir("Wheres Waldo Images/Cleared/WaldosHead"):
+        head_name = os.path.join("Wheres Waldo Images/Cleared/WaldosHead", head_batch)
+        
+        for _ in range(head_use_num):
+            # Itera per cada imatge de fons (sense Waldo!!)
+            for back_batch in os.listdir("Wheres Waldo Images/Cleared/ClearedWaldos"):
+                back_name = os.path.join("Wheres Waldo Images/Cleared/ClearedWaldos", back_batch)
+                
+                for _ in range(background_use_num):
 
-    
-    head_files = []
-    background_files = []
-
-    # Recorre les carpetes d'imatges i afegeix els noms dels fitxers a les llistes
-    for root, _, files in os.walk(head_path):
-        for file in files:
-            head_files.append(os.path.join(root, file))
-
-    for root, _, files in os.walk(background_path):
-        for file in files:
-            background_files.append(os.path.join(root, file))
-
-    # Recorre els caps de Waldo
-    for head_file in head_files:
-        for _ in range(2): # Repetir per cada cap 2 vegades
-            for background_file in background_files:
-                for _ in range(2): # Repetir per cada fons 2 vegades
-                    head_image = Image.open(head_file)
-
-                    # Rotar aleatoriament el cap de Waldo (50% de probabilitat)
-                    if random.random() < 0.5:
-                        head_image = head_image.rotate(random.randint(-15, 15))
-
-                    # Escalar aleatòriament el cap de Waldo (70% de probabilitat)
-                    if random.random() < 0.7:
-                        scale_factor = random.uniform(0.8, 1.5)
-                        width, height = head_image.size
-                        head_image = head_image.resize((int(width * scale_factor), int(height * scale_factor)), Image.Resampling.LANCZOS)
-
-                    if use_background:
-                        background_image = Image.open(background_file)
+                    # Rotació aleatòria del cap de Waldo (50% de probabilitats)
+                    if random.randint(0, 9) < 5:
+                        num = random.randint(-15, 15)
+                        foreground = Image.open(head_name).rotate(num)
                     else:
-                        background_image = Image.open("black_background.jpg")
+                        foreground = Image.open(head_name)
 
-                    # Obtenir dimensions de la imatge de fons i del cap
-                    bg_width, bg_height = background_image.size
-                    head_width, head_height = head_image.size
+                    # Escala aleatòria del cap de Waldo (70% de probabilitats)
+                    if random.randint(0, 9) < 7:
+                        scale = random.uniform(0.8, 1.5)
+                        w, h = foreground.size
+                        foreground = foreground.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
+                    
+                    # Selecció del fons real o negre
+                    if use_background:
+                        background = Image.open(back_name)
+                    else:
+                        background = Image.open("Wheres Waldo Images/Cleared/black_background.jpg")
 
-                    # Generar posicions aleatòries per al fons i el cap
-                    bg_x = random.randint(0, bg_width - 64)
-                    bg_y = random.randint(0, bg_height - 64)
-                    head_x = random.randint(0, 64 - head_width)
-                    head_y = random.randint(0, 64 - head_height)
+                    # Obtenim les dimensions de la imatge de fons i la del cap
+                    bck_w, bck_h = background.size
+                    frg_w, frg_h = foreground.size
 
-                    # Retallar la imatge de fons a 64x64 píxels
-                    cropped_background = background_image.crop((bg_x, bg_y, bg_x + 64, bg_y + 64))
+                    # Coordenades aleatories per retallar el fons i enganxar-hi el cap
+                    bck_x = random.randint(0, bck_w - size)
+                    bck_y = random.randint(0, bck_h - size)  
+                    frg_x = random.randint(0, 64 - frg_w)
+                    frg_y = random.randint(0, 64 - frg_h)
 
-                    # Guardar la imatge de fons sense Waldo
-                    cropped_background.save(os.path.join(no_waldo_path, f"n{im_num}.jpg"))
+                    # Retallem el fons de mida 64x64
+                    cropped = background.crop((bck_x, bck_y, bck_x + size, bck_y + size))
 
-                    # Afegir el cap de Waldo a la imatge de fons
-                    cropped_background.paste(head_image, (head_x, head_y), head_image)
+                    # Si cropped és CMYK, el convertim a RGB
+                    if cropped.mode == 'CMYK':
+                        cropped = cropped.convert('RGB')
+                    
+                    # Guardem primer la versió sense Waldo (negative image)
+                    cropped.save("Wheres Waldo Images/NotWaldo/n" + str(im_num) + ".png")
+                    
+                    # Enganxa el cap de Waldo sobre el fons retallat
+                    cropped.paste(foreground, (frg_x, frg_y), foreground)
+                    
+                    # Si foreground és CMYK, el convertim a RGB
+                    if foreground.mode == 'CMYK':
+                        foreground = foreground.convert('RGB')
 
-                    # Guardar la imatge amb Waldo
-                    cropped_background.save(os.path.join(waldo_path, f"{im_num}.jpg"))
-
+                    # Guardem la imatge resultant amb Waldo i augmentem el contador
+                    cropped.save("Wheres Waldo Images/Waldo/" + str(im_num)+str(use_background) + ".png")
                     im_num += 1
 
+
 generating_waldos(use_background=True)
+
+
